@@ -46,7 +46,9 @@ public class MCQ extends JavaPlugin {
     @Override
     public void reloadConfig() {
         super.reloadConfig();
-        commandManager.reload();
+        if (commandManager != null) {
+            commandManager.reload();
+        }
     }
     
     private void initBotClient() {

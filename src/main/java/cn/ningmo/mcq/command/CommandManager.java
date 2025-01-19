@@ -2,6 +2,7 @@ package cn.ningmo.mcq.command;
 
 import cn.ningmo.mcq.MCQ;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,7 +20,11 @@ public class CommandManager {
     }
     
     private void loadCommands() {
-        ConfigurationSection cmdSection = plugin.getConfig().getConfigurationSection("commands");
+        commands.clear();
+        aliasMap.clear();
+        
+        FileConfiguration config = plugin.getConfig();  // 直接使用getConfig()而不是触发reload
+        ConfigurationSection cmdSection = config.getConfigurationSection("commands");
         if (cmdSection == null) return;
         
         for (String key : cmdSection.getKeys(false)) {
