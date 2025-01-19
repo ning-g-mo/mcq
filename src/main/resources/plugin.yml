@@ -1,0 +1,23 @@
+name: MCQ
+version: '${project.version}'
+main: cn.ningmo.mcq.MCQ
+api-version: '1.13'
+authors: [ningmo]
+description: Minecraft QQ互通插件
+commands:
+  mcq:
+    description: MCQ插件命令
+    usage: /mcq help
+permissions:
+  mcq.admin:
+    description: 管理员权限
+    default: op
+  mcq.status:
+    description: 查看服务器状态权限
+    default: true
+  mcq.bind:
+    description: 绑定白名单权限
+    default: true
+  mcq.unbind:
+    description: 解绑白名单权限
+    default: true 

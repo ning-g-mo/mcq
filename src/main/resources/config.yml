@@ -1,0 +1,148 @@
+bot:
+  # OneBot WebSocket地址
+  ws-url: "ws://localhost:6700"
+  # 管理员QQ号列表
+  admins:
+    - 123456789
+  # 消息互通群号
+  groups:
+    - 987654321
+  # 重连设置
+  reconnect:
+    enabled: true
+    delay: 30  # 重连延迟（秒）
+    max-attempts: 5  # 最大重连次数
+
+# 消息格式
+message-format:
+  # QQ到MC的消息格式
+  qq-to-mc: "§b[QQ] §f{sender}: {message}"
+  # MC到QQ的消息格式
+  mc-to-qq: "[MC] {player}: {message}"
+
+# 白名单设置
+whitelist:
+  # 是否启用白名单
+  enabled: true
+  # 绑定模式: "direct" 或 "verify"
+  bind-mode: "verify"
+  # 验证码设置
+  verify:
+    # 验证码长度
+    length: 6
+    # 验证码有效期（分钟）
+    expire: 5
+    # 验证码格式 (number: 纯数字, mixed: 数字字母混合)
+    format: "number"
+  # 每个QQ号最大绑定数量
+  max-bindings-per-qq: 1
+  # 绑定冷却时间（分钟）
+  bind-cooldown: 60
+  # 验证消息格式
+  messages:
+    verify-sent: "验证码已发送至游戏内，请在游戏中输入：/mcq verify <验证码> 完成绑定"
+    verify-expired: "验证码已过期，请重新申请"
+    verify-invalid: "验证码错误，请重新输入"
+    verify-success: "绑定成功！"
+  # 强制绑定设置
+  force-bind:
+    # 是否启用强制绑定
+    enabled: true
+    # 未绑定玩家是否可以进入服务器
+    allow-join: true
+    # 未绑定玩家进入服务器后多少秒后踢出（0表示不踢出）
+    kick-delay: 300
+    # 踢出消息
+    kick-message: "请在QQ群中发送 !bind <游戏ID> 完成白名单绑定"
+    # 进入服务器时的提示消息
+    join-message: "§c[MCQ] §f请在 {time} 秒内完成QQ白名单绑定，否则将被踢出服务器"
+    # 定时提醒间隔（秒）
+    remind-interval: 60
+
+# 命令权限设置
+permissions:
+  # 管理员命令前缀
+  admin-prefix: "!admin"
+  # 普通命令前缀
+  user-prefix: "!"
+
+# 状态显示设置
+status:
+  # 是否在状态中显示在线玩家列表
+  show-player-list: true
+  # 是否显示内存使用情况
+  show-memory: true
+  # 是否显示TPS
+  show-tps: true
+  # 状态命令冷却时间（秒）
+  cooldown: 30
+
+# 命令设置
+commands:
+  status:
+    name: "status"
+    aliases: ["服务器", "在线"]
+    permission: "mcq.status"
+    cooldown: 30
+    admin-only: false
+    usage: "!status"
+    description: "查看服务器状态"
+    actions:
+      - "status"
+  
+  bind:
+    name: "bind"
+    aliases: ["绑定"]
+    permission: "mcq.bind"
+    cooldown: 60
+    admin-only: false
+    usage: "!bind <游戏ID>"
+    description: "绑定白名单"
+    actions:
+      - "bind {arg1}"
+  
+  unbind:
+    name: "unbind"
+    aliases: ["解绑"]
+    permission: "mcq.unbind"
+    cooldown: 60
+    admin-only: false
+    usage: "!unbind <游戏ID>"
+    description: "解绑白名单"
+    actions:
+      - "unbind {arg1}"
+  
+  reload:
+    name: "reload"
+    aliases: ["重载"]
+    permission: "mcq.admin.reload"
+    cooldown: 0
+    admin-only: true
+    usage: "!admin reload"
+    description: "重载配置文件"
+    actions:
+      - "reload"
+  
+  # 自定义命令示例
+  tps:
+    name: "tps"
+    aliases: ["延迟"]
+    permission: "mcq.tps"
+    cooldown: 10
+    admin-only: false
+    usage: "!tps"
+    description: "查看服务器TPS"
+    actions:
+      - "tps"
+  
+  broadcast:
+    name: "broadcast"
+    aliases: ["公告", "广播"]
+    permission: "mcq.admin.broadcast"
+    cooldown: 30
+    admin-only: true
+    usage: "!admin broadcast <消息>"
+    description: "发送全服公告"
+    actions:
+      - "broadcast {args}"
+      - "qq_broadcast {args}" 
