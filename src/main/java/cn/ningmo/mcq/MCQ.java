@@ -3,12 +3,18 @@ package cn.ningmo.mcq;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.configuration.file.FileConfiguration;
 import cn.ningmo.mcq.command.CommandManager;
+import cn.ningmo.mcq.util.LogManager;
+import cn.ningmo.mcq.filter.MessageFilter;
+import cn.ningmo.mcq.monitor.PerformanceMonitor;
 
 public class MCQ extends JavaPlugin {
     private static MCQ instance;
     private BotClient botClient;
     private WhitelistManager whitelistManager;
     private CommandManager commandManager;
+    private LogManager logManager;
+    private MessageFilter messageFilter;
+    private PerformanceMonitor performanceMonitor;
     
     @Override
     public void onEnable() {
@@ -16,6 +22,9 @@ public class MCQ extends JavaPlugin {
         
         // 保存默认配置
         saveDefaultConfig();
+        
+        // 初始化日志管理器
+        logManager = new LogManager(this);
         
         // 初始化命令管理器
         commandManager = new CommandManager(this);
@@ -25,6 +34,12 @@ public class MCQ extends JavaPlugin {
         
         // 初始化机器人客户端
         initBotClient();
+        
+        // 初始化消息过滤器
+        messageFilter = new MessageFilter(this);
+        
+        // 初始化性能监控器
+        performanceMonitor = new PerformanceMonitor(this);
         
         // 注册事件监听器
         getServer().getPluginManager().registerEvents(new MinecraftEventListener(this), this);
@@ -40,14 +55,26 @@ public class MCQ extends JavaPlugin {
         if (botClient != null) {
             botClient.disconnect();
         }
+        if (performanceMonitor != null) {
+            performanceMonitor.stop();
+        }
         getLogger().info("MCQ插件已禁用！");
     }
     
     @Override
     public void reloadConfig() {
         super.reloadConfig();
+        if (logManager != null) {
+            logManager.reloadConfig();
+        }
         if (commandManager != null) {
             commandManager.reload();
+        }
+        if (messageFilter != null) {
+            messageFilter.reload();
+        }
+        if (performanceMonitor != null) {
+            performanceMonitor.reload();
         }
     }
     
@@ -72,5 +99,17 @@ public class MCQ extends JavaPlugin {
     
     public CommandManager getCommandManager() {
         return commandManager;
+    }
+    
+    public LogManager getLogManager() {
+        return logManager;
+    }
+    
+    public MessageFilter getMessageFilter() {
+        return messageFilter;
+    }
+    
+    public PerformanceMonitor getPerformanceMonitor() {
+        return performanceMonitor;
     }
 } 

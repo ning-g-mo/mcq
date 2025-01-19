@@ -13,6 +13,35 @@ bot:
     enabled: true
     delay: 30  # 重连延迟（秒）
     max-attempts: 5  # 最大重连次数
+    # 重连间隔递增（每次失败后增加延迟）
+    increase-delay: true
+    # 最大重连延迟（秒）
+    max-delay: 300
+  # 心跳设置
+  heartbeat:
+    enabled: true
+    interval: 30  # 心跳间隔（秒）
+    timeout: 10   # 心跳超时（秒）
+
+# 消息过滤设置
+message-filter:
+  # 最大消息长度
+  max-length: 500
+  # 消息速率限制（每分钟）
+  rate-limit: 60
+  # 敏感词过滤
+  word-filter:
+    enabled: true
+    # 替换为的字符
+    replace-with: "*"
+    # 敏感词列表
+    words: []
+  # 命令前缀
+  command-prefix: "!"
+  # 是否允许空消息
+  allow-empty: false
+  # 是否允许纯图片消息
+  allow-pure-image: true
 
 # 消息格式
 message-format:
@@ -20,6 +49,12 @@ message-format:
   qq-to-mc: "§b[QQ] §f{sender}: {message}"
   # MC到QQ的消息格式
   mc-to-qq: "[MC] {player}: {message}"
+  # 系统消息格式
+  system: "§e[系统] §f{message}"
+  # 错误消息格式
+  error: "§c[错误] §f{message}"
+  # 成功消息格式
+  success: "§a[成功] §f{message}"
 
 # 白名单设置
 whitelist:
@@ -35,6 +70,10 @@ whitelist:
     expire: 5
     # 验证码格式 (number: 纯数字, mixed: 数字字母混合)
     format: "number"
+    # 验证失败次数限制
+    max-attempts: 3
+    # 验证码冷却时间（秒）
+    cooldown: 60
   # 每个QQ号最大绑定数量
   max-bindings-per-qq: 1
   # 绑定冷却时间（分钟）
@@ -45,20 +84,17 @@ whitelist:
     verify-expired: "验证码已过期，请重新申请"
     verify-invalid: "验证码错误，请重新输入"
     verify-success: "绑定成功！"
+    verify-max-attempts: "验证失败次数过多，请重新申请验证码"
   # 强制绑定设置
   force-bind:
-    # 是否启用强制绑定
     enabled: true
-    # 未绑定玩家是否可以进入服务器
     allow-join: true
-    # 未绑定玩家进入服务器后多少秒后踢出（0表示不踢出）
     kick-delay: 300
-    # 踢出消息
     kick-message: "请在QQ群中发送 !bind <游戏ID> 完成白名单绑定"
-    # 进入服务器时的提示消息
     join-message: "§c[MCQ] §f请在 {time} 秒内完成QQ白名单绑定，否则将被踢出服务器"
-    # 定时提醒间隔（秒）
     remind-interval: 60
+    # 踢出后冷却时间（分钟）
+    rejoin-cooldown: 5
 
 # 命令权限设置
 permissions:
@@ -145,4 +181,59 @@ commands:
     description: "发送全服公告"
     actions:
       - "broadcast {args}"
-      - "qq_broadcast {args}" 
+      - "qq_broadcast {args}"
+
+# 日志设置
+logging:
+  # 日志级别 (ALL, FINEST, FINER, FINE, CONFIG, INFO, WARNING, SEVERE, OFF)
+  level: INFO
+  # 是否记录详细错误信息
+  detailed-errors: true
+  # 是否记录调试信息
+  debug: false
+  # 是否记录WebSocket通信日志
+  websocket: true
+  # 是否记录命令执行日志
+  commands: true
+  # 是否记录消息转发日志
+  messages: true
+  # 是否记录性能监控日志
+  performance: false
+  # 是否记录API调用日志
+  api: false
+  # 是否记录白名单操作日志
+  whitelist: true
+  # 文件日志
+  file:
+    enabled: true
+    # 日志文件路径
+    path: "logs/mcq.log"
+    # 日志保留天数
+    keep-days: 7
+    # 单个日志文件大小限制（MB）
+    max-size: 10
+  # 错误日志过滤
+  error-filter:
+    # 忽略的错误类型
+    ignored-exceptions:
+      - "java.net.ConnectException"
+      - "java.io.IOException"
+      - "java.net.SocketTimeoutException"
+    # 错误消息去重时间(秒)
+    dedup-time: 60
+    # 最大错误历史记录数
+    max-history: 1000
+    # 定期清理错误历史
+    cleanup-interval: 3600
+
+# 性能监控
+performance:
+  enabled: true
+  # 监控间隔（秒）
+  interval: 300
+  # TPS警告阈值
+  tps-warning: 18.0
+  # 内存警告阈值（百分比）
+  memory-warning: 80
+  # 是否发送警告消息到QQ群
+  send-warnings: true 

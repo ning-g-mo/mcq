@@ -166,9 +166,12 @@ public class WhitelistManager {
         int maxBindings = plugin.getConfig().getInt("whitelist.max-bindings-per-qq", 1);
         int currentBindings = 0;
         
-        for (String key : whitelistConfig.getConfigurationSection("players").getKeys(false)) {
-            if (whitelistConfig.getString("players." + key).equals(String.valueOf(qqId))) {
-                currentBindings++;
+        // 添加空值检查
+        if (whitelistConfig.getConfigurationSection("players") != null) {
+            for (String key : whitelistConfig.getConfigurationSection("players").getKeys(false)) {
+                if (whitelistConfig.getString("players." + key).equals(String.valueOf(qqId))) {
+                    currentBindings++;
+                }
             }
         }
         
