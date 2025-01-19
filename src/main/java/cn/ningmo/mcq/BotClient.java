@@ -245,16 +245,26 @@ public class BotClient extends WebSocketClient {
     @Override
     public void onClose(int code, String reason, boolean remote) {
         plugin.getLogger().warning("与OneBot服务器断开连接: " + reason);
-        // 尝试重新连接
-        if (plugin.getConfig().getBoolean("bot.reconnect.enabled", true)) {
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                try {
-                    reconnectBlocking();
-                } catch (InterruptedException e) {
-                    plugin.getLogger().severe("重连时发生错误: " + e.getMessage());
-                }
-            }, 200L);
+        
+        // 检查重连设置
+        if (!plugin.getConfig().getBoolean("bot.reconnect.enabled", true)) {
+            return;
         }
+        
+        int delay = plugin.getConfig().getInt("bot.reconnect.delay", 30);
+        int maxAttempts = plugin.getConfig().getInt("bot.reconnect.max-attempts", 5);
+        
+        // 使用异步任务进行重连
+        plugin.getServer().getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            try {
+                if (!isOpen() && !isClosing()) {
+                    plugin.getLogger().info("正在尝试重新连接到OneBot服务器...");
+                    reconnectBlocking();
+                }
+            } catch (InterruptedException e) {
+                plugin.getLogger().severe("重连时发生错误: " + e.getMessage());
+            }
+        }, delay * 20L);
     }
     
     public void disconnect() {

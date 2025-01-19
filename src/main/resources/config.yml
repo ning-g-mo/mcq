@@ -1,6 +1,7 @@
+# OneBot机器人设置
 bot:
   # OneBot WebSocket地址
-  ws-url: "ws://localhost:6700"
+  ws-url: "ws://127.0.0.1:3001"
   # 管理员QQ号列表
   admins:
     - 123456789
@@ -123,7 +124,6 @@ commands:
     actions:
       - "reload"
   
-  # 自定义命令示例
   tps:
     name: "tps"
     aliases: ["延迟"]
