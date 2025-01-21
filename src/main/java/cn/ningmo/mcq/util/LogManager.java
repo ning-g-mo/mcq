@@ -52,7 +52,7 @@ public class LogManager {
     
     public void debug(String message) {
         if (debug) {
-            logger.fine("[DEBUG] " + message);
+            logger.info("[DEBUG] " + message);
         }
     }
     

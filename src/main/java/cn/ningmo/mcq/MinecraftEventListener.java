@@ -23,77 +23,96 @@ public class MinecraftEventListener implements Listener {
         this.plugin = plugin;
     }
     
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        String format = plugin.getConfig().getString("message-format.mc-to-qq");
-        String message = format
-            .replace("{player}", event.getPlayer().getName())
-            .replace("{message}", event.getMessage());
+        try {
+            String format = plugin.getConfig().getString("message-format.mc-to-qq", "[MC] {player}: {message}");
+            String message = format
+                .replace("{player}", event.getPlayer().getName())
+                .replace("{message}", event.getMessage());
+                
+            if (plugin.getLogManager().isMessagesEnabled()) {
+                plugin.getLogManager().message("MC消息转发: " + event.getPlayer().getName() + " -> " + event.getMessage());
+            }
             
-        for (Long groupId : plugin.getConfig().getLongList("bot.groups")) {
-            plugin.getBotClient().sendGroupMessage(groupId, message);
+            for (Long groupId : plugin.getConfig().getLongList("bot.groups")) {
+                plugin.getBotClient().sendGroupMessage(groupId, message);
+            }
+        } catch (Exception e) {
+            plugin.getLogManager().error("转发MC消息到QQ时发生错误", e);
         }
     }
     
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        String playerName = player.getName();
-        
-        // 检查是否启用强制绑定
-        if (!plugin.getConfig().getBoolean("whitelist.force-bind.enabled", true)) {
-            return;
-        }
-        
-        // 检查玩家是否已绑定
-        if (plugin.getWhitelistManager().isWhitelisted(playerName)) {
-            return;
-        }
-        
-        // 如果不允许未绑定玩家进入，直接踢出
-        if (!plugin.getConfig().getBoolean("whitelist.force-bind.allow-join", true)) {
-            String kickMessage = plugin.getConfig().getString("whitelist.force-bind.kick-message");
-            player.kickPlayer(kickMessage);
-            return;
-        }
-        
-        // 获取踢出延迟时间
-        int kickDelay = plugin.getConfig().getInt("whitelist.force-bind.kick-delay", 300);
-        if (kickDelay > 0) {
-            // 发送提示消息
-            String joinMessage = plugin.getConfig().getString("whitelist.force-bind.join-message")
-                .replace("{time}", String.valueOf(kickDelay));
-            player.sendMessage(joinMessage);
+        try {
+            String message = "§a+ §f" + event.getPlayer().getName() + " 加入了服务器";
             
-            // 设置定时提醒
-            int remindInterval = plugin.getConfig().getInt("whitelist.force-bind.remind-interval", 60);
-            if (remindInterval > 0) {
-                BukkitTask remindTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-                    if (player.isOnline() && !plugin.getWhitelistManager().isWhitelisted(playerName)) {
-                        player.sendMessage("§c[MCQ] §f请尽快完成QQ白名单绑定！");
-                    } else {
-                        BukkitTask task = remindTasks.remove(playerName);
-                        if (task != null) {
-                            task.cancel();
-                        }
-                    }
-                }, remindInterval * 20L, remindInterval * 20L);
-                remindTasks.put(playerName, remindTask);
+            // 发送到QQ群
+            for (Long groupId : plugin.getConfig().getLongList("bot.groups")) {
+                plugin.getBotClient().sendGroupMessage(groupId, message);
             }
             
-            // 设置延迟踢出
-            BukkitTask kickTask = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (player.isOnline() && !plugin.getWhitelistManager().isWhitelisted(playerName)) {
-                    String kickMessage = plugin.getConfig().getString("whitelist.force-bind.kick-message");
-                    player.kickPlayer(kickMessage);
+            Player player = event.getPlayer();
+            String playerName = player.getName();
+            
+            // 检查是否启用强制绑定
+            if (!plugin.getConfig().getBoolean("whitelist.force-bind.enabled", true)) {
+                return;
+            }
+            
+            // 检查玩家是否已绑定
+            if (plugin.getWhitelistManager().isWhitelisted(playerName)) {
+                return;
+            }
+            
+            // 如果不允许未绑定玩家进入，直接踢出
+            if (!plugin.getConfig().getBoolean("whitelist.force-bind.allow-join", true)) {
+                String kickMessage = plugin.getConfig().getString("whitelist.force-bind.kick-message");
+                player.kickPlayer(kickMessage);
+                return;
+            }
+            
+            // 获取踢出延迟时间
+            int kickDelay = plugin.getConfig().getInt("whitelist.force-bind.kick-delay", 300);
+            if (kickDelay > 0) {
+                // 发送提示消息
+                String joinMessage = plugin.getConfig().getString("whitelist.force-bind.join-message")
+                    .replace("{time}", String.valueOf(kickDelay));
+                player.sendMessage(joinMessage);
+                
+                // 设置定时提醒
+                int remindInterval = plugin.getConfig().getInt("whitelist.force-bind.remind-interval", 60);
+                if (remindInterval > 0) {
+                    BukkitTask remindTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+                        if (player.isOnline() && !plugin.getWhitelistManager().isWhitelisted(playerName)) {
+                            player.sendMessage("§c[MCQ] §f请尽快完成QQ白名单绑定！");
+                        } else {
+                            BukkitTask task = remindTasks.remove(playerName);
+                            if (task != null) {
+                                task.cancel();
+                            }
+                        }
+                    }, remindInterval * 20L, remindInterval * 20L);
+                    remindTasks.put(playerName, remindTask);
                 }
-                kickTasks.remove(playerName);
-                BukkitTask remind = remindTasks.remove(playerName);
-                if (remind != null) {
-                    remind.cancel();
-                }
-            }, kickDelay * 20L);
-            kickTasks.put(playerName, kickTask);
+                
+                // 设置延迟踢出
+                BukkitTask kickTask = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                    if (player.isOnline() && !plugin.getWhitelistManager().isWhitelisted(playerName)) {
+                        String kickMessage = plugin.getConfig().getString("whitelist.force-bind.kick-message");
+                        player.kickPlayer(kickMessage);
+                    }
+                    kickTasks.remove(playerName);
+                    BukkitTask remind = remindTasks.remove(playerName);
+                    if (remind != null) {
+                        remind.cancel();
+                    }
+                }, kickDelay * 20L);
+                kickTasks.put(playerName, kickTask);
+            }
+        } catch (Exception e) {
+            plugin.getLogManager().error("处理玩家加入事件时发生错误", e);
         }
     }
     

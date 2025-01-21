@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.Arrays;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import java.lang.reflect.Method;
 
 public class BotClient extends WebSocketClient {
     private final MCQ plugin;
@@ -128,86 +131,82 @@ public class BotClient extends WebSocketClient {
     
     private void handleGroupMessage(JsonObject json) {
         try {
-            // 添加详细的空值检查
-            if (!json.has("group_id") || !json.has("user_id") || !json.has("message") || !json.has("sender")) {
-                if (plugin.getLogManager().isDebug()) {
-                    plugin.getLogManager().debug("消息缺少必要字段: " + json.toString());
-                }
+            if (plugin.getLogManager().isDebug()) {
+                plugin.getLogManager().debug("收到群消息: " + json.toString());
+            }
+
+            // 检查必要字段
+            if (!json.has("message") || !json.has("group_id") || 
+                !json.has("sender") || !json.get("sender").isJsonObject()) {
                 return;
             }
-            
-            // 添加类型检查
-            if (!json.get("group_id").isJsonPrimitive() || 
-                !json.get("user_id").isJsonPrimitive() || 
-                !json.get("message").isJsonPrimitive() || 
-                !json.get("sender").isJsonObject()) {
-                if (plugin.getLogManager().isDebug()) {
-                    plugin.getLogManager().debug("消息字段类型错误: " + json.toString());
-                }
-                return;
-            }
-            
+
+            // 获取群号
             long groupId = json.get("group_id").getAsLong();
-            long senderId = json.get("user_id").getAsLong();
-            String message = json.get("message").getAsString();
             
+            // 检查是否为配置的群
             List<Long> configGroups = plugin.getConfig().getLongList("bot.groups");
             if (!configGroups.contains(groupId)) {
                 if (plugin.getLogManager().isDebug()) {
-                    plugin.getLogManager().debug(String.format(
-                        "忽略非配置群消息: groupId=%d, configGroups=%s", 
-                        groupId, configGroups
-                    ));
+                    plugin.getLogManager().debug("忽略非配置群消息, 群号: " + groupId);
                 }
                 return;
             }
-            
-            // 应用消息过滤器
-            MessageFilter.FilterResult result = plugin.getMessageFilter().filter(message, senderId);
-            if (!result.isAllowed()) {
-                if (plugin.getLogManager().isDebug()) {
-                    plugin.getLogManager().debug("消息被过滤: " + result.getMessage());
-                }
-                return;
-            }
-            message = result.getMessage();
-            
-            // 添加CQ码处理
-            message = processCQCodes(message);
-            
-            // 处理命令
-            if (message.startsWith("!")) {
-                handleCommand(message, senderId, groupId);
-                return;
-            }
-            
-            // 转发消息到游戏内
-            JsonObject sender = json.getAsJsonObject("sender");
-            if (!sender.has("nickname") || !sender.get("nickname").isJsonPrimitive()) {
-                plugin.getLogManager().debug("消息缺少发送者昵称或类型错误: " + json.toString());
-                return;
-            }
-            
+
+            // 获取发送者信息
+            JsonObject sender = json.get("sender").getAsJsonObject();
             String senderName = sender.get("nickname").getAsString();
-            String format = plugin.getConfig().getString("message-format.qq-to-mc");
-            String gameMessage = format
+            
+            // 获取消息内容
+            String message;
+            if (json.has("message_format") && "array".equals(json.get("message_format").getAsString())) {
+                // 处理数组格式消息
+                JsonArray messageArray = json.getAsJsonArray("message");
+                StringBuilder messageBuilder = new StringBuilder();
+                
+                for (JsonElement element : messageArray) {
+                    JsonObject msgObj = element.getAsJsonObject();
+                    String type = msgObj.get("type").getAsString();
+                    JsonObject data = msgObj.get("data").getAsJsonObject();
+                    
+                    switch (type) {
+                        case "text":
+                            messageBuilder.append(data.get("text").getAsString());
+                            break;
+                        case "at":
+                            messageBuilder.append("@").append(data.get("name").getAsString()).append(" ");
+                            break;
+                        case "image":
+                            messageBuilder.append("[图片] ");
+                            break;
+                        // 添加其他类型的处理...
+                    }
+                }
+                message = messageBuilder.toString().trim();
+            } else {
+                // 处理原始消息
+                message = json.get("raw_message").getAsString();
+            }
+
+            // 过滤消息
+            MessageFilter.FilterResult filterResult = plugin.getMessageFilter().filter(message, sender.get("user_id").getAsLong());
+            if (!filterResult.isAllowed()) {
+                return;
+            }
+            message = filterResult.getMessage();
+
+            // 转发到服务器
+            String format = plugin.getConfig().getString("message-format.qq-to-mc", "§b[QQ] §f{sender}: {message}");
+            String finalMessage = format
                 .replace("{sender}", senderName)
                 .replace("{message}", message);
-                
-            plugin.getServer().broadcastMessage(gameMessage);
-            
-            if (plugin.getLogManager().isMessagesEnabled()) {
-                plugin.getLogManager().message(String.format(
-                    "QQ消息转发: %s -> %s", 
-                    senderName, message
-                ));
-            }
+
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                plugin.getServer().broadcastMessage(finalMessage);
+            });
+
         } catch (Exception e) {
-            // 避免错误消息刷屏
-            if (plugin.getLogManager().isDebug()) {
-                plugin.getLogManager().error("处理群消息时发生错误: " + e.getMessage(), e);
-                plugin.getLogManager().debug("原始消息: " + json.toString());
-            }
+            plugin.getLogManager().error("处理群消息时发生错误", e);
         }
     }
     
@@ -417,13 +416,23 @@ public class BotClient extends WebSocketClient {
     
     // 添加CQ码处理方法
     private String processCQCodes(String message) {
-        // 处理图片
-        message = message.replaceAll("\\[CQ:image,[^\\]]*\\]", "[图片]");
-        // 处理表情
-        message = message.replaceAll("\\[CQ:face,id=\\d+\\]", "[表情]");
-        // 处理@
-        message = message.replaceAll("\\[CQ:at,qq=\\d+\\]", "@某人");
-        return message;
+        try {
+            // 替换CQ码中的特殊字符
+            message = message.replaceAll("&#91;", "[")
+                            .replaceAll("&#93;", "]")
+                            .replaceAll("&amp;", "&");
+            
+            // 处理图片CQ码
+            message = message.replaceAll("\\[CQ:image,[^\\]]*\\]", "[图片]");
+            
+            // 处理表情CQ码
+            message = message.replaceAll("\\[CQ:face,id=\\d+\\]", "");
+            
+            return message;
+        } catch (Exception e) {
+            plugin.getLogManager().error("处理CQ码时发生错误", e);
+            return message;
+        }
     }
     
     // 添加心跳检测
